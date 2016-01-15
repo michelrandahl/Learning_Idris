@@ -76,4 +76,8 @@ silly_append elem Z m [] ys = ys
 silly_append elem (S k) m (x :: xs) ys =
   x :: silly_append elem k m xs ys
 
-
+silly_append2 : {elem: _} -> {n : _} -> {m : _} ->
+                Vect n elem -> Vect m elem -> Vect (n + m) elem
+silly_append2 [] ys = ys
+silly_append2 (x :: xs) ys =
+  x :: silly_append2 xs ys
