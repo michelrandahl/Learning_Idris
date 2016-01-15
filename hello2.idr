@@ -1,3 +1,4 @@
+-- various code from the first three chapters
 module Main
 import Data.Vect
 
@@ -63,4 +64,16 @@ my_map f (x :: xs) =
 my_map2 : (a -> b) -> Vect n a -> Vect n b
 my_map2 f [] = []
 my_map2 f (x :: xs) = f x :: my_map2 f xs
+
+||| Very silly append function
+||| can be used like this:
+|||   > silly_append Char 2 2 ['a','b'] ['c','d']
+||| but also like this:
+|||   > silly_append _ _ _ ['a','b'] ['c','d']
+silly_append : (elem : Type) -> (n : Nat) -> (m : Nat) ->
+         Vect n elem -> Vect m elem -> Vect (n + m) elem
+silly_append elem Z m [] ys = ys
+silly_append elem (S k) m (x :: xs) ys =
+  x :: silly_append elem k m xs ys
+
 
