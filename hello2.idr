@@ -81,3 +81,11 @@ silly_append2 : {elem: _} -> {n : _} -> {m : _} ->
 silly_append2 [] ys = ys
 silly_append2 (x :: xs) ys =
   x :: silly_append2 xs ys
+
+-- sometimes Idris is crazy strict! Vect (0+n) _... wtf
+append : Vect m elem -> Vect n elem -> Vect (m + n) elem
+append {n} [] ys = the (Vect (0+n) _) ys
+append (x :: xs) ys = x :: append xs ys
+
+legth2 : Vect n elem -> Nat
+legth2 {n} xs = n
