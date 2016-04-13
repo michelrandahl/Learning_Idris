@@ -1,6 +1,7 @@
 module Main
 
 import System
+import Data.Vect
 
 printLength : IO ()
 printLength = getLine >>= \input => let len = length input in
@@ -122,6 +123,51 @@ customRepl prompt onInput = do
 test2 : IO ()
 test2 = customRepl "lala" (\s => "ok")
 
+read_vect_len : (len : Nat) -> IO (Vect len String)
+read_vect_len Z = pure []
+read_vect_len (S k) = do
+  x <- getLine
+  xs <- read_vect_len k
+  pure (x :: xs)
+
+data VectUnkown : Type -> Type where
+  MkVect : (len : Nat) -> Vect len a -> VectUnkown a
+
+read_vect : IO (VectUnkown String)
+read_vect = do
+  x <- getLine
+  if (x == "") then
+    pure (MkVect _ [])
+  else do
+    MkVect _ xs <- read_vect
+    pure (MkVect _ (x :: xs))
+
+printVect : Show a => VectUnkown a -> IO ()
+printVect (MkVect len xs) =
+  putStrLn (show xs ++ " (length " ++ show len ++ ")")
+
+anyVect : (n ** Vect n String)
+anyVect = (3 ** ?hole)
+
+
+read_vect2 : IO (len ** Vect len String)
+read_vect2 = do
+  x <- getLine
+  if (x == "") then
+    pure (_ ** [])
+  else do
+    (_ ** xs) <- read_vect2
+    pure (_ ** x :: xs)
+
+zipInputs : IO ()
+zipInputs = do
+  putStrLn "Enter first vector and then a blank"
+  (len1 ** vec1) <- read_vect2
+  putStrLn "Enter second vector and then a blank"
+  (len2 ** vec2) <- read_vect2
+  case exactLength len1 vec2 of
+       Nothing => putStrLn "vectors have different lengths"
+       Just vec2' => printLn (zip vec1 vec2')
 
 
 
