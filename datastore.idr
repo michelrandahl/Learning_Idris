@@ -2,77 +2,186 @@ module Main
 
 import Data.Vect
 
-data DataStore : Type where
-  MkData : (size : Nat) -> (items : Vect size String) -> DataStore
+infixr 5 .+.
 
-size : DataStore -> Nat
-size (MkData size' items') = size'
 
-items : (store : DataStore) -> Vect (size store) String
-items (MkData size' items') = items'
+data Schema = SString
+            | SInt
+            | SChar
+            | (.+.) Schema Schema
 
-addToStore : DataStore -> String -> DataStore
-addToStore (MkData size' items) newitem = MkData _ (addToData items)
+SchemaType : Schema -> Type
+SchemaType SString = String
+SchemaType SInt = Int
+SchemaType SChar = Char
+SchemaType (x .+. y) = (SchemaType x, SchemaType y)
+
+record DataStore where
+  constructor MkData
+  schema: Schema
+  size: Nat
+  items: Vect size (SchemaType schema)
+
+data Command : Schema -> Type where
+  SetSchema : (new_schema: Schema) -> Command schema
+  Add    : SchemaType schema -> Command schema
+  Get    : Integer -> Command schema
+  GetAll : Command schema
+  Quit   : Command schema
+
+
+
+addToStore : (store: DataStore) -> SchemaType (schema store) -> DataStore
+addToStore (MkData schema size store) newitem =
+  MkData schema _ (addToData store)
   where
-    addToData : Vect old String -> Vect (S old) String
+    addToData : Vect old_size (SchemaType schema) ->
+                Vect (S old_size) (SchemaType schema)
     addToData [] = [newitem]
     addToData (item' :: items') = item' :: addToData items'
 
-sumInputs : Integer -> String -> Maybe (String, Integer)
-sumInputs acc inp =
-  let val = cast inp in
-      if val < 0 then Nothing
-      else
-        let newVal = acc + val in
-            Just("sub total: " ++ show newVal ++ "\n", newVal)
 
-data Command = Add String
-             | Get Integer
-             | Size
-             | Search
-             | Quit
 
-parseCommand : (cmd : String) -> (args : String) -> Maybe Command
-parseCommand "add" args = Just (Add args)
-parseCommand "get" args = case all isDigit (unpack args) of
-                               False => Nothing
-                               True  => Just (Get (cast args))
-parseCommand "size" args = Just Size
-parseCommand "search" args = Just Search
-parseCommand "quit" "" = Just Quit
-parseCommand _ _ = Nothing
+parsePrefix : (schema : Schema) -> String -> Maybe (SchemaType schema, String)
 
-parse : (input : String) -> Maybe Command
-parse input = case span (/= ' ') input of
-                   (cmd, args) => parseCommand cmd (ltrim args)
+parsePrefix SString input = getQuoted (unpack input)
+  where
+    getQuoted : List Char -> Maybe (String, String)
+    getQuoted ('"' :: xs) =
+      case span (/= '"') xs of
+           (quoted, '"' :: rest) => Just (pack quoted, ltrim (pack rest))
+           ____________________  => Nothing
+    getQuoted _ = Nothing
 
-getEntry : (pos : Integer) -> (store : DataStore) -> Maybe (String, DataStore)
+parsePrefix SInt input =
+  case span isDigit input of
+       ("", rest) => Nothing
+       (num, rest) => Just (cast num, ltrim rest)
+
+parsePrefix SChar input =
+  case unpack input of
+       []      => Nothing
+       x :: xs => Just (x, ltrim $ pack xs)
+
+parsePrefix (schema_left .+. schema_right) input =
+  do (left_val, input') <- parsePrefix schema_left input
+     (right_val, input'') <- parsePrefix schema_right input'
+     Just ( (left_val, right_val), input'' )
+
+
+
+parseBySchema : (schema : Schema) -> String -> Maybe (SchemaType schema)
+parseBySchema schema input =
+  case parsePrefix schema input of
+       Just (res, "") => Just res
+       Just _         => Nothing
+       Nothing        => Nothing
+
+
+
+parseSchema : List String -> Maybe Schema
+
+parseSchema ("String" :: xs) =
+  case xs of
+       [] => Just SString
+       _ => do xs_schema <- parseSchema xs
+               Just (SString .+. xs_schema)
+
+parseSchema ("Int" :: xs) =
+  case xs of
+       [] => Just SInt
+       _ => do xs_schema <- parseSchema xs
+               Just (SInt .+. xs_schema)
+
+parseSchema ("Char" :: xs) =
+  case xs of
+       [] => Just SChar
+       _ => do xs_schema <- parseSchema xs
+               Just (SChar .+. xs_schema)
+
+parseSchema _ = Nothing
+
+
+
+parseCommand : (schema : Schema) -> String -> String -> Maybe (Command schema)
+
+parseCommand schema "add" rest =
+  do rest_ok <- parseBySchema schema rest
+     Just (Add rest_ok)
+
+parseCommand schema "get" arg =
+  case (all isDigit (unpack arg), arg) of
+       (False, _) => Nothing
+       (_, "")    => Just GetAll
+       (True, _)  => Just (Get (cast arg))
+
+parseCommand schema "quit" "" = Just Quit
+
+parseCommand schema "schema" rest =
+  do schema_ok <- parseSchema (words rest)
+     Just (SetSchema schema_ok)
+
+parseCommand _ _ _ = Nothing
+
+
+
+display : SchemaType schema -> String
+display {schema = SString} item = item
+display {schema = SInt} item = show item
+display {schema = SChar} item = show item
+display {schema = (x .+. y)} (a, b) = display a ++ ", " ++ display b
+
+
+
+parse : (schema: Schema) -> (input: String) -> Maybe (Command schema)
+parse schema input =
+  case span (/= ' ') input of
+       (cmd, args) => parseCommand schema cmd (ltrim args)
+
+
+
+getEntry : (pos: Integer) -> (store: DataStore) -> Maybe (String, DataStore)
 getEntry pos store =
   let store_items = items store in
       case integerToFin pos (size store) of
-           Nothing => Just ("Out of range\n", store)
-           Just id => Just (index id store_items ++ "\n", store)
+           Nothing => Just ("out of range\n", store)
+           Just id => Just (display (index id (items store)) ++ "\n", store)
 
-showAll : (store: DataStore) -> List (Nat, String)
-showAll store = loop Z (items store)
-  where
-    loop : Nat -> Vect _ String -> List (Nat, String)
-    loop _ [] = []
-    loop n (x :: xs) = (n,x) :: loop (S n) xs
+
+
+getEntries : (store: DataStore) -> Maybe (String, DataStore)
+getEntries store =
+  case size store of
+       Z => Nothing
+       _ => let items_strings = map display (items store) in
+                Just (foldl (\a,e => a ++ e ++ "\n") "" items_strings, store)
+
+
+
+setSchema : (store: DataStore) -> Schema -> Maybe DataStore
+setSchema store schema = case size store of
+                              Z => Just (MkData schema _ [])
+                              S k => Nothing
+
+
 
 processInput : DataStore -> String -> Maybe (String, DataStore)
 processInput store input =
-  case parse input of
-       Nothing => Just ("invalid cmd\n", store)
-       Just (Add x) => Just ("ID" ++ show (size store) ++ "\n",
-                             addToStore store x)
+  case parse (schema store) input of
+       Nothing => Just ("Invalid cmd\n", store)
+       Just (Add item) => Just ("ID " ++ show (size store) ++ "\n",
+                                addToStore store item)
+       Just (SetSchema schema') =>
+        case setSchema store schema' of
+             Nothing => Just ("Can't update schema\n", store)
+             Just store' => Just ("OK\n", store')
+       Just GetAll => getEntries store
        Just (Get pos) => getEntry pos store
-       Just Size => Just ("Size is: " ++ show (size store) ++ "\n",
-                          store)
-       Just Search => Just ("Elements are: " ++ show (showAll store) ++ "\n",
-                            store)
        Just Quit => Nothing
 
-main : IO()
-main = replWith (MkData _ []) "Cmd: " processInput
+
+
+main : IO ()
+main = replWith (MkData (SString .+. SString .+. SInt) _ [])
+                "cmd: " processInput
 

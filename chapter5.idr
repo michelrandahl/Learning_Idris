@@ -170,4 +170,41 @@ zipInputs = do
        Just vec2' => printLn (zip vec1 vec2')
 
 
+readToBlank : IO (List String)
+readToBlank = do
+  line <- getLine
+  if (line == "") then
+    pure []
+  else do
+    xs <- readToBlank
+    pure (line :: xs)
+
+readAndSave : IO ()
+readAndSave = do
+  putStrLn "enter list values"
+  xs <- readToBlank
+  putStrLn "enter file name"
+  out_file <- getLine
+  res <- writeFile out_file (unlines xs) -- TODO: error handling to make fun total
+  case res of
+       Right _ => putStrLn "file saved"
+       Left err => putStrLn (show err)
+
+readLines : (file : File) -> IO (len ** Vect len String)
+readLines file = do
+  eof <- fEOF file
+  if eof then
+    pure (_ ** [])
+  else do
+    Right line <- fGetLine file
+    (_ ** lines) <- readLines file
+    pure (_ ** line :: lines)
+
+readVectFile : (filename : String) -> IO (n ** Vect n String)
+readVectFile filename = do
+  Right f <- openFile filename Read | Left err => pure (_ ** [])
+  readLines f
+
+
+
 
