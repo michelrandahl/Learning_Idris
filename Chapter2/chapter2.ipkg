@@ -1,0 +1,3 @@
+package chapter2
+
+modules = Basics, Main

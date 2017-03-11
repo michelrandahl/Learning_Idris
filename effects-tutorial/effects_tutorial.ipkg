@@ -1,0 +1,4 @@
+package effects_tutorial
+
+modules = hello_world, state_chapter
+pkgs = effects
