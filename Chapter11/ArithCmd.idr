@@ -1,5 +1,5 @@
 module ArithCmd
--- section 11.3
+-- section 11.3.2
 
 import System
 import Data.Primitives.Views

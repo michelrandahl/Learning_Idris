@@ -2,6 +2,7 @@ module RunIO
 -- section 11.3
 %default total
 
+-- the Inf type stuff is potentially infinite..
 data RunIO : Type -> Type where
   Quit : action -> RunIO action
   Do : IO action -> (action -> Inf (RunIO next_action)) -> RunIO next_action

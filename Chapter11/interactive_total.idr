@@ -4,7 +4,7 @@ module Interactive_total
 import Data.Primitives.Views
 import System
 
-
+-- totality checks for everybody in da club (exept those poor functions marked as partial)
 %default total
 
 data InfIO : Type where
@@ -13,11 +13,18 @@ data InfIO : Type where
 (>>=) : IO action -> (action -> Inf InfIO) -> InfIO
 (>>=) = Do
 
-total
 loopPrint : String -> InfIO
 loopPrint msg =
   do putStrLn msg
      loopPrint msg
+
+partial -- Idris wrongly reports run1 to be total (must be a bug..?)
+run1 : InfIO -> IO ()
+run1 (Do action cont) = do res <- action
+                           run1 (cont res)
+-- following runs forever... forever eva!?..
+-- :exec run1 (loopPrint "on and on...")
+-- see idris I told you so, it aint total!..
 
 data Fuel = Dry | More Fuel
 
@@ -32,8 +39,7 @@ run (More fuel) (Do action f) = do res <- action
 
 data LazyFuel = LazyDry | LazyMore (Lazy LazyFuel)
 
--- not total because Idris expects Lazy to be reduced
--- whereas it doesn't require that from Inf
+-- this fella aint total because Idris expects Lazy type stuff to be reduced, whereas it doesn't require that from Inf type stuff
 partial
 forever : LazyFuel
 forever = LazyMore forever
@@ -43,6 +49,9 @@ run2 LazyDry _ = putStrLn "out of fuel"
 run2 (LazyMore fuel) (Do io_action f) =
   do res <- io_action
      run2 fuel (f res)
+-- run2 is total because it reduces on its fuel
+-- however, we can run it forever with the 'forever' fuel
+-- :exec run2 forever (loopPrint "on and on again...")
 
 quiz : Stream Int -> (score : Nat) -> InfIO
 quiz (x :: y :: xs) score =

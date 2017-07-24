@@ -4,6 +4,7 @@ module Streams
 import Data.Primitives.Views
 import Data.Nat.Views
 
+-- playing around with views and proofs --
 test1 : Divides (the Int 32) (the Int 12)
 test1 = 32 `divides` 12
 
@@ -13,6 +14,8 @@ test2 x with (x `divides` 12)
 
 test3 : Int.Divides ((12 * 3) + 6) (the Int 12)
 test3 = Int.DivBy {rem = 6} {d = 12} {div = 3} Refl
+
+-- infinite lists and the Stream type
 
 data InfList : Type -> Type where
   (::) : (value : elem) -> Inf (InfList elem) -> InfList elem
@@ -44,7 +47,9 @@ quiz (x :: y :: xs) score =
                 quiz xs (score + 1)
         else do putStrLn ("Wrong, the answer is " ++ show (x * y))
                 quiz xs score
+-- :exec quiz (arithInputs 12345) 0
 
+-- simple random number generator
 randoms : Int -> Stream Int
 randoms seed = let seed' = 1664525 * seed + 1013904223 in
                    (seed' `shiftR` 2) :: randoms seed'
