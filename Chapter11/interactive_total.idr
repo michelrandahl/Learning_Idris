@@ -22,9 +22,6 @@ partial -- Idris wrongly reports run1 to be total (must be a bug..?)
 run1 : InfIO -> IO ()
 run1 (Do action cont) = do res <- action
                            run1 (cont res)
--- following runs forever... forever eva!?..
--- :exec run1 (loopPrint "on and on...")
--- see idris I told you so, it aint total!..
 
 data Fuel = Dry | More Fuel
 
@@ -81,11 +78,19 @@ main = do seed <- time
           run2 forever (quiz (arithInputs (fromInteger seed)) 0)
 
 -- exercises
+
+total
 totalRepl : (prompt : String) -> (action : String -> String) -> InfIO
 totalRepl prompt action = do putStrLn prompt
                              user_input <- getLine
-                             putStrLn (action user_input)
+                             putStrLn $ action user_input
                              totalRepl prompt action
 
+partial
+classicRepl : (prompt : String) -> (action : String -> String) -> IO ()
+classicRepl prompt action = do putStrLn prompt
+                               user_input <- getLine
+                               putStrLn $ action user_input
+                               classicRepl prompt action
 
 
