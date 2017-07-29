@@ -127,6 +127,9 @@ mutual
   readInput prompt =
     do PutStr prompt
        answer <- GetLine
+       -- note that if we input some garbage, it will return (Answer 0) because of cast
+       -- $ the Int (cast "foobar")
+       -- > 0
        if toLower answer == "quit"
           then Pure QuitCmd
           else Pure $ Answer $ cast answer
