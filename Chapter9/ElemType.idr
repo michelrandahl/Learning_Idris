@@ -4,9 +4,38 @@ data Vect : Nat -> Type -> Type where
      Nil  : Vect Z a
      (::) : a -> Vect k a -> Vect (S k) a
 
+data Tree : a -> Type where
+  EmptyTree : Tree a
+  Node : a -> Tree a -> Tree a -> Tree a
+
+Eq a => Eq (Tree a) where
+  (==) EmptyTree EmptyTree = True
+  (==) (Node e l r) (Node e' l' r') =
+    l == l' && e == e' && r == r'
+  (==) _ _ = False
+
+
+singleton : a -> Tree a
+singleton x = Node x EmptyTree EmptyTree
+
+treeInsert : Ord a => a -> Tree a -> Tree a
+treeInsert e EmptyTree  = singleton e
+treeInsert x (Node e l r) =
+  case compare x e of
+       EQ => Node x l r
+       LT => Node e (treeInsert x l) r
+       GT => Node e l (treeInsert x r)
+
+nums : List Nat
+nums = [8, 4, 1, 3, 7, 6, 1]
+
+numsTree : Tree Nat
+numsTree = foldr treeInsert EmptyTree nums
+
 data Elem : a -> Vect k a -> Type where
   Here  : Elem x (x :: xs)
   There : (later : Elem x xs) -> Elem x (y :: xs)
+
 
 notInNil : Elem value [] -> Void
 notInNil Here impossible
